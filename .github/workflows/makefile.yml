@@ -42,7 +42,7 @@ jobs:
       run: make libusb -j$(nproc) LDFLAGS="-L/usr/local/lib -fuse-ld=lld" CC=clang LIBS="-ldl -lusb-1.0 -pthread -lcrypto"
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3.1.0
+      uses: actions/upload-artifact@v4
       with:
           name: gaster-Linux
           path: gaster
@@ -62,7 +62,7 @@ jobs:
         run: make macos -j$(sysctl -n hw.ncpu)
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3.1.0
+        uses: actions/upload-artifact@v4
         with:
           name: gaster-Darwin
           path: gaster
@@ -83,7 +83,7 @@ jobs:
         run: make ios -j$(sysctl -n hw.ncpu)
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3.1.0
+        uses: actions/upload-artifact@v4
         with:
           name: gaster-iOS
           path: gaster
