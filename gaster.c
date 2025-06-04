@@ -1303,6 +1303,11 @@ gaster_checkm8(usb_handle_t *handle) {
 				puts("Stage: PATCH");
 				ret = checkm8_stage_patch(handle);
 				stage = STAGE_RESET;
+#ifdef HAVE_LIBUSB
+				if(cpid == 0x8960) {
+					puts("Unplug and replug the device now (at least 2 times)");
+				}
+#endif
 			}
 			if(ret) {
 				puts("ret: true");
