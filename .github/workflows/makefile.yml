@@ -10,8 +10,16 @@ on:
 
 jobs:
   build-libusb-linux:
+    strategy:
+      matrix:
+        arch:
+          - runner: ubuntu-22.04
+            name: x86_64
+          - runner: ubuntu-22.04-arm
+            name: aarch64
 
-    runs-on: ubuntu-24.04
+    name: build-libusb-linux-${{ matrix.arch.name }}
+    runs-on: ${{ matrix.arch.runner }}
 
     steps:
     - uses: actions/checkout@v3
@@ -21,19 +29,23 @@ jobs:
           sudo apt update
           sudo apt install -y aria2 libusb-1.0-0-dev clang lld
           sudo apt remove -y libssl-dev libusb-1.0-0-dev
-          aria2c https://www.openssl.org/source/openssl-1.1.1q.tar.gz
-          tar -zxvf openssl-1.1.1q.tar.gz
-          cd openssl-1.1.1q
-          ./Configure no-ssl3-method enable-ec_nistp_64_gcc_128 linux-x86_64 "-Wa,--noexecstack -fPIC"
+          aria2c https://www.openssl.org/source/openssl-1.1.1w.tar.gz
+          tar -zxvf openssl-1.1.1w.tar.gz
+          cd openssl-1.1.1w
+          if [[ $(uname -m) == "a"* && $(getconf LONG_BIT) == 64 ]]; then
+            ./Configure no-ssl3-method linux-aarch64 "-Wa,--noexecstack -fPIC"
+          else
+            ./Configure no-ssl3-method enable-ec_nistp_64_gcc_128 linux-x86_64 "-Wa,--noexecstack -fPIC"
+          fi
           make depend -j4
           make -j4
           sudo make install_sw install_ssldirs
           sudo rm -rf /usr/local/lib/libcrypto.so* /usr/local/lib/libssl.so*
           cd ..
           
-          aria2c https://github.com/libusb/libusb/releases/download/v1.0.26/libusb-1.0.26.tar.bz2
-          tar -xf libusb-1.0.26.tar.bz2
-          cd libusb-1.0.26
+          aria2c https://github.com/libusb/libusb/releases/download/v1.0.28/libusb-1.0.28.tar.bz2
+          tar -xf libusb-1.0.28.tar.bz2
+          cd libusb-1.0.28
           ./configure --disable-shared --enable-static --disable-udev LDFLAGS="-static"
           make -j$(nproc)
           sudo make install
@@ -44,7 +56,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-          name: gaster-Linux
+          name: gaster-Linux-${{ matrix.arch.name }}
           path: gaster
 
           if-no-files-found: warn
