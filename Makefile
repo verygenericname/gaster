@@ -32,7 +32,7 @@ ios:
 	xxd -iC payload_notA9_armv7.bin payload_notA9_armv7.h
 	xxd -iC payload_handle_checkm8_request.bin payload_handle_checkm8_request.h
 	xxd -iC payload_handle_checkm8_request_armv7.bin payload_handle_checkm8_request_armv7.h
-	xcrun -sdk iphoneos clang -arch armv7 -arch arm64 -isystemheaders -mios-version-min=9.0 -Weverything gaster.c lzfse.c -o gaster -framework CoreFoundation -framework IOKit -Os
+	xcrun -sdk iphoneos clang -arch arm64 -isystemheaders -mios-version-min=9.0 -Weverything gaster.c lzfse.c -o gaster -framework CoreFoundation -framework IOKit -Os # -arch armv7 sad
 	$(RM) payload_A9.h payload_A7.h payload_notA9.h payload_notA9_armv7.h payload_handle_checkm8_request.h payload_handle_checkm8_request_armv7.h
 	$(RM) -r headers
 
